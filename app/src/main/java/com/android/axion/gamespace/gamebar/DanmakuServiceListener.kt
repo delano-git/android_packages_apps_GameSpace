@@ -22,6 +22,7 @@ package com.android.axion.gamespace.gamebar
 import android.app.Notification
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
+import android.util.Log
 
 class DanmakuServiceListener : NotificationListenerService() {
 
@@ -33,7 +34,15 @@ class DanmakuServiceListener : NotificationListenerService() {
 
     override fun onListenerConnected() {
         super.onListenerConnected()
-        getActiveNotifications()?.forEach { sbn ->
+        // The listener may already be unregistered by the time this runs
+        // (e.g. the game session ended), in which case the system rejects the call.
+        val activeNotifications = try {
+            getActiveNotifications()
+        } catch (e: SecurityException) {
+            Log.w(TAG, "Listener no longer registered, skipping active notifications", e)
+            null
+        }
+        activeNotifications?.forEach { sbn ->
             if (sbn.isClearable && !sbn.isOngoing) {
                 val danmakuText = extractDanmakuText(sbn)
                 if (danmakuText.isNotBlank()) {
@@ -95,6 +104,7 @@ class DanmakuServiceListener : NotificationListenerService() {
     }
 
     companion object {
+        private const val TAG = "DanmakuServiceListener"
         private const val NOTIFICATIONS_MAX_CACHED = 99
     }
 }
